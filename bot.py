@@ -271,7 +271,7 @@ def process_event_message(message: discord.Message, content: str):
 
     # Single loss
     if not handled:
-        loss_match = re.search(r"lost\s+(\d+)\s*points", content, re.IGNORECASE)
+        loss_match = re.search(r"(?:lost|has taken|taken)\s+(\d+)\s*points", content, re.IGNORECASE)
         if loss_match:
             amount = int(loss_match.group(1))
             handled = apply_simple_loss(message, amount)
