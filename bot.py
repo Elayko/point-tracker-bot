@@ -303,6 +303,14 @@ def process_event_message(message: discord.Message, content: str):
 
     return handled
 
+import asyncio
+
+async def auto_backup():
+    while True:
+        await asyncio.sleep(300)  # every 5 minutes
+        with open("backup_scores.json", "w") as f:
+            json.dump(scores, f, indent=2)
+        print("Auto backup saved")
 
 # =========================
 # BOT EVENTS
@@ -311,6 +319,7 @@ def process_event_message(message: discord.Message, content: str):
 @bot.event
 async def on_ready():
     load_scores()
+    bot.loop.create_task(auto_backup())
     print(f"Logged in as {bot.user}")
 
 
@@ -356,6 +365,43 @@ async def on_command_error(ctx, error):
 # =========================
 # COMMANDS
 # =========================
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def exportjson(ctx):
+    if not scores:
+        await ctx.send("No scores saved.")
+        return
+
+    data = json.dumps(scores, indent=2)
+
+    # Discord message limit handling
+    chunks = [data[i:i+1900] for i in range(0, len(data), 1900)]
+
+    for chunk in chunks:
+        await ctx.send(f"```json\n{chunk}\n```")
+
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def exporttext(ctx):
+    if not scores:
+        await ctx.send("No scores saved.")
+        return
+
+    lines = []
+    for uid, total in sorted(scores.items(), key=lambda x: x[1], reverse=True):
+        member = ctx.guild.get_member(int(uid))
+        name = member.display_name if member else f"User {uid}"
+        lines.append(f"{name}: {total}")
+
+    text = "\n".join(lines)
+
+    chunks = [text[i:i+1900] for i in range(0, len(text), 1900)]
+
+    for chunk in chunks:
+        await ctx.send(f"```{chunk}```")
+
 
 @bot.command()
 async def points(ctx, member: discord.Member = None):
