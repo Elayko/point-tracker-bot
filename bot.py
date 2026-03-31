@@ -44,9 +44,16 @@ scores = {}
 
 def load_scores():
     global scores
-    if os.path.exists(SCORES_FILE):
+
+    if os.path.exists("backup_scores.json"):
+        with open("backup_scores.json", "r", encoding="utf-8") as f:
+            scores = json.load(f)
+        print("Loaded from backup")
+
+    elif os.path.exists(SCORES_FILE):
         with open(SCORES_FILE, "r", encoding="utf-8") as f:
             scores = json.load(f)
+
     else:
         scores = {}
 
