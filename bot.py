@@ -79,6 +79,28 @@ def add_score(user_id: int, amount: int):
 
 
 # =========================
+# TEAMS
+# =========================
+
+TEAM_GUARDIANS = {
+    404674914725920768, # Savage
+    156270491995340800, # Invi
+    1148619387239153675, # Star
+    614907482925433031, # BBK
+    196732067072049152, # Mikko
+    1142569919574184007,  # Angel
+}
+
+TEAM_NIGHTMARES = {
+    683230346145562634, # Zara
+    486129744639819797, # Cats
+    211109730674933760, # Leese
+    1373998440929038438, # Aijo
+    1253117066857287693 # Kay
+}
+
+
+# =========================
 # MEMBER MATCHING HELPERS
 # =========================
 
@@ -423,13 +445,41 @@ async def leaderboard(ctx):
         await ctx.send("No scores recorded yet.")
         return
 
-    sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+    def get_name(uid):
+        member = ctx.guild.get_member(int(uid))
+        return member.display_name if member else f"User {uid}"
+
+    guardian_scores = []
+    nightmare_scores = []
+
+    for uid, points in scores.items():
+        uid_int = int(uid)
+
+        if uid_int in TEAM_GUARDIANS:
+            guardian_scores.append((uid_int, points))
+        elif uid_int in TEAM_NIGHTMARES:
+            nightmare_scores.append((uid_int, points))
+
+    guardian_scores.sort(key=lambda x: x[1], reverse=True)
+    nightmare_scores.sort(key=lambda x: x[1], reverse=True)
+
+    guardian_total = sum(p for _, p in guardian_scores)
+    nightmare_total = sum(p for _, p in nightmare_scores)
 
     lines = []
-    for i, (uid, total) in enumerate(sorted_scores[:20], start=1):
-        member = ctx.guild.get_member(int(uid))
-        name = member.display_name if member else f"User {uid}"
-        lines.append(f"**{i}.** {name} — {total} points")
+
+    lines.append("🐰 **TEAM GUARDIANS** 🐰")
+    for i, (uid, points) in enumerate(guardian_scores, start=1):
+        lines.append(f"{i}. {get_name(uid)} — {points}")
+
+    lines.append(f"**TOTAL: {guardian_total}**")
+    lines.append("")
+
+    lines.append("💀 **TEAM NIGHTMARES** 💀")
+    for i, (uid, points) in enumerate(nightmare_scores, start=1):
+        lines.append(f"{i}. {get_name(uid)} — {points}")
+
+    lines.append(f"**TOTAL: {nightmare_total}**")
 
     await ctx.send("\n".join(lines))
 
