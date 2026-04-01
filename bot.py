@@ -109,8 +109,6 @@ def normalize_name(text: str) -> str:
 
 
 def clean_fight_name(text: str) -> str:
-    text = text.strip()
-    text = text.lstrip("@")
     return text.strip()
 
 
@@ -151,6 +149,22 @@ def find_member_by_name(guild: discord.Guild, raw_name: str):
         return partial_matches[0]
 
     return None
+
+
+def resolve_member_from_text(guild: discord.Guild, raw_text: str):
+    """
+    Resolves a member from:
+    - raw mention like <@123456789>
+    - raw nickname like cats
+    """
+    raw_text = raw_text.strip()
+
+    mention_match = re.match(r"<@!?(\d+)>", raw_text)
+    if mention_match:
+        user_id = int(mention_match.group(1))
+        return guild.get_member(user_id)
+
+    return find_member_by_name(guild, raw_text)
 
 
 # =========================
@@ -206,6 +220,7 @@ def apply_simple_loss(message: discord.Message, amount: int):
 def handle_fight_message(message: discord.Message, content: str):
     """
     Handles:
+    - <@id> has picked a fight with cats! cats has won 100 points!
     - @Cats has picked a fight with invi! @Cats has won 100 points!
     - @invi has picked a fight with leese! leese has won 100 points!
     - @Starfish has picked a fight with Cats! Both have lost 75 points!
@@ -222,11 +237,11 @@ def handle_fight_message(message: discord.Message, content: str):
     if not start_match:
         return False
 
-    attacker_name = clean_fight_name(start_match.group(1))
-    defender_name = clean_fight_name(start_match.group(2))
+    attacker_text = start_match.group(1).strip()
+    defender_text = start_match.group(2).strip()
 
-    attacker = find_member_by_name(guild, attacker_name)
-    defender = find_member_by_name(guild, defender_name)
+    attacker = resolve_member_from_text(guild, attacker_text)
+    defender = resolve_member_from_text(guild, defender_text)
 
     amount = parse_points(content)
     if amount is None:
@@ -234,8 +249,8 @@ def handle_fight_message(message: discord.Message, content: str):
 
     if attacker is None or defender is None:
         print("[FIGHT] Could not match attacker or defender.")
-        print(f" attacker text: {attacker_name}")
-        print(f" defender text: {defender_name}")
+        print(f" attacker text: {attacker_text}")
+        print(f" defender text: {defender_text}")
         return False
 
     content_lower = content.lower()
@@ -252,14 +267,15 @@ def handle_fight_message(message: discord.Message, content: str):
         re.IGNORECASE
     )
     if not winner_match:
+        print("[FIGHT] Winner not found in message.")
         return False
 
-    winner_name = clean_fight_name(winner_match.group(1))
-    winner = find_member_by_name(guild, winner_name)
+    winner_text = winner_match.group(1).strip()
+    winner = resolve_member_from_text(guild, winner_text)
 
     if winner is None:
         print("[FIGHT] Winner not matched.")
-        print(f" winner text: {winner_name}")
+        print(f" winner text: {winner_text}")
         return False
 
     if winner.id == attacker.id:
@@ -295,8 +311,14 @@ def process_event_message(message: discord.Message, content: str):
         return True
 
     # Fight messages
-    if not handled and "has picked a fight with" in content_lower:
+    is_fight_message = "has picked a fight with" in content_lower
+
+    if not handled and is_fight_message:
         handled = handle_fight_message(message, content)
+
+        if not handled:
+            print("[FIGHT MESSAGE NOT RESOLVED - skipping generic point handlers]")
+            return False
 
     # Single loss
     if not handled:
